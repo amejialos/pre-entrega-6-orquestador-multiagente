@@ -1,0 +1,26 @@
+# Secretos: nunca subir las API keys
+.env
+
+# Entorno virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Checkpoints locales del agente (se regeneran con demo.py)
+*.sqlite
+*.sqlite-*
+*.db
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+.claude/
+
+# Checkpoints del notebook
+.ipynb_checkpoints/
