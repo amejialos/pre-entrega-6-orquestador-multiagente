@@ -60,3 +60,18 @@ def test_conserva_y_reenvia_la_thought_signature(entorno):
     payload = model._get_request_payload([HumanMessage("1+1"), mensaje, ToolMessage("{}", tool_call_id="call_1")])
     assert payload["messages"][1]["tool_calls"][0]["extra_content"] == FIRMA
     assert EXTRA_CONTENT_KEY not in payload["messages"][1]
+
+
+class _ErrorHTTP(Exception):
+    def __init__(self, status_code: int, mensaje: str) -> None:
+        super().__init__(mensaje)
+        self.status_code = status_code
+
+
+def test_reintenta_transitorios_pero_no_la_cuota_diaria():
+    from agents.common import es_error_transitorio
+
+    assert es_error_transitorio(_ErrorHTTP(503, "high demand"))
+    assert es_error_transitorio(_ErrorHTTP(429, "quotaId: GenerateRequestsPerMinutePerProjectPerModel"))
+    assert not es_error_transitorio(_ErrorHTTP(429, "quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier"))
+    assert not es_error_transitorio(_ErrorHTTP(400, "bad request"))

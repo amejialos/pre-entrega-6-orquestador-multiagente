@@ -27,14 +27,21 @@ from state import Contribution, Especialista
 # consume 2. Con 9 entran 4 rondas de herramientas más la respuesta final.
 SPECIALIST_RECURSION_LIMIT = 9
 
-# Reintentos de los nodos que llaman al LLM ante errores transitorios (429 por cuota
-# por minuto, 5xx), con esperas largas para que se libere la ventana del free tier.
-RETRY_MODELO = RetryPolicy(
-    max_attempts=3,
-    initial_interval=20.0,
-    backoff_factor=2.0,
-    retry_on=lambda exc: getattr(exc, "status_code", None) in {429, 500, 502, 503, 504},
-)
+def es_error_transitorio(exc: Exception) -> bool:
+    """429 por cuota POR MINUTO o 5xx (p. ej. 503 "high demand"): vale la pena reintentar.
+
+    El 429 por cuota DIARIA (`...PerDay...`) no se libera en minutos: reintentarlo solo
+    gasta tiempo, así que se deja pasar para cambiar de modelo.
+    """
+    status = getattr(exc, "status_code", None)
+    if status == 429:
+        return "PerDay" not in str(exc)
+    return status in {500, 502, 503, 504}
+
+
+# Reintentos de los nodos que llaman al LLM ante errores transitorios, con esperas largas
+# (20 s, 40 s) para que se libere la ventana por minuto del free tier.
+RETRY_MODELO = RetryPolicy(max_attempts=3, initial_interval=20.0, backoff_factor=2.0, retry_on=es_error_transitorio)
 
 
 def crear_agente_react(model: BaseChatModel, tools: Sequence[BaseTool], prompt: str, name: str) -> CompiledStateGraph:
